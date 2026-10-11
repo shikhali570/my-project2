@@ -39,6 +39,7 @@ function auth_login($username, $password)
         return false;
     }
     session_regenerate_id(true);
+    session_cookie_send();
     $_SESSION['user'] = [
         'id'        => (int)$user['id'],
         'username'  => $user['username'],
@@ -50,12 +51,10 @@ function auth_login($username, $password)
 
 function auth_logout()
 {
+    // پاک‌سازی داده‌های نشست و بازتولید شناسه (نشست برای پیام‌های بعدی باقی می‌ماند)
     $_SESSION = [];
-    if (ini_get('session.use_cookies')) {
-        $p = session_get_cookie_params();
-        setcookie(session_name(), '', time() - 42000, $p['path'], $p['domain'], $p['secure'], $p['httponly']);
-    }
-    session_destroy();
+    session_regenerate_id(true);
+    session_cookie_send();
 }
 
 /** اجبار ورود */

@@ -37,6 +37,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <h2><?= e(setting('company_name', config('app.name'))) ?></h2>
     <p class="sub">سامانه حسابداری تحت وب — ورود به حساب کاربری</p>
 
+    <?php foreach (flash_get() as $flash): ?>
+        <div class="alert alert-<?= e($flash['type']) ?>"><?= e($flash['message']) ?></div>
+    <?php endforeach; ?>
+
     <?php if ($error): ?>
         <div class="alert alert-danger"><?= e($error) ?></div>
     <?php endif; ?>

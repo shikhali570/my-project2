@@ -36,6 +36,48 @@ function config($key = null, $default = null)
 date_default_timezone_set(config('app.timezone', 'Asia/Tehran'));
 mb_internal_encoding('UTF-8');
 
+/** تشخیص HTTPS (با در نظر گرفتن پراکسی معکوس) */
+function request_is_https()
+{
+    if (!empty($_SERVER['HTTPS']) && strtolower((string)$_SERVER['HTTPS']) !== 'off') {
+        return true;
+    }
+    if (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https') {
+        return true;
+    }
+    if (($_SERVER['HTTP_X_FORWARDED_SSL'] ?? '') === 'on') {
+        return true;
+    }
+    if ((int)($_SERVER['SERVER_PORT'] ?? 0) === 443) {
+        return true;
+    }
+    if ((int)($_SERVER['HTTP_X_FORWARDED_PORT'] ?? 0) === 443) {
+        return true;
+    }
+    return false;
+}
+
+/**
+ * ارسال کوکی نشست به‌صورت دستی
+ * (پشتیبانی از SameSite=None و Partitioned برای محیط‌های HTTPS/توکار)
+ */
+function session_cookie_send()
+{
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        return;
+    }
+    $https = request_is_https();
+    $value = rawurlencode(session_name()) . '=' . rawurlencode(session_id());
+    $attrs = '; Path=/; HttpOnly';
+    if ($https) {
+        // SameSite=None برای iframe + Partitioned (CHIPS) برای مرورگرهایی که کوکی شخص ثالث را مسدود می‌کنند
+        $attrs .= '; SameSite=None; Secure; Partitioned';
+    } else {
+        $attrs .= '; SameSite=Lax';
+    }
+    header('Set-Cookie: ' . $value . $attrs, false);
+}
+
 // نشست
 if (session_status() === PHP_SESSION_NONE) {
     // مسیر قابل‌نوشتن برای فایل‌های نشست
@@ -47,13 +89,17 @@ if (session_status() === PHP_SESSION_NONE) {
         @ini_set('session.save_path', $sessionDir);
     }
     session_name('ACCSESSID');
-    session_set_cookie_params([
-        'lifetime' => 0,
-        'path'     => '/',
-        'httponly' => true,
-        'samesite' => 'Lax',
-    ]);
+    @ini_set('session.use_cookies', '0');     // کوکی را خودمان مدیریت می‌کنیم
+    @ini_set('session.use_only_cookies', '1');
+    @ini_set('session.use_strict_mode', '1');
+
+    // بازیابی شناسه نشست از کوکی (فقط قالب معتبر)
+    $incomingSid = (string)($_COOKIE[session_name()] ?? '');
+    if (preg_match('/^[a-f0-9]{32,128}$/', $incomingSid)) {
+        session_id($incomingSid);
+    }
     session_start();
+    session_cookie_send();
 }
 
 require_once __DIR__ . '/jalali.php';

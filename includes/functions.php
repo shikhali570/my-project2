@@ -143,12 +143,48 @@ function csrf_field()
     return '<input type="hidden" name="csrf_token" value="' . e(csrf_token()) . '">';
 }
 
+/**
+ * بررسی توکن CSRF
+ * در صورت نامعتبر بودن، به‌جای توقف خام، با پیام راهنما دوباره فرم نمایش داده می‌شود.
+ */
 function csrf_check()
 {
-    if (($_POST['csrf_token'] ?? '') !== ($_SESSION['csrf_token'] ?? '')) {
-        http_response_code(403);
-        exit('درخواست نامعتبر است (CSRF). لطفاً دوباره تلاش کنید.');
+    $sent = (string)($_POST['csrf_token'] ?? '');
+    $known = (string)($_SESSION['csrf_token'] ?? '');
+    if ($sent !== '' && $known !== '' && hash_equals($known, $sent)) {
+        return;
     }
+
+    // تشخیص اینکه کلاً کوکی به مرورگر نرسیده (مثلاً مسدودسازی کوکی در iframe)
+    if (empty($_COOKIE[session_name()]) && empty($_COOKIE)) {
+        // بدون نشست، پیام را مستقیم نمایش می‌دهیم (فلش کار نمی‌کند)
+        http_response_code(403);
+        $back = (string)($_SERVER['REQUEST_URI'] ?? '');
+        if ($back === '' || $back[0] !== '/') {
+            $back = url('index.php');
+        }
+        echo '<!DOCTYPE html><html lang="fa" dir="rtl"><head><meta charset="UTF-8"><title>خطای نشست</title>
+<style>body{font-family:Tahoma,sans-serif;background:#f1f5f9;margin:0}
+.box{max-width:520px;margin:70px auto;background:#fff;border-radius:12px;padding:32px;text-align:center;box-shadow:0 8px 30px rgba(0,0,0,.08)}
+h2{color:#d97706;margin:0 0 10px}a{display:inline-block;margin-top:16px;background:#2563eb;color:#fff;padding:10px 22px;border-radius:8px;text-decoration:none}</style>
+</head><body><div class="box">
+<h2>نشست شما معتبر نیست</h2>
+<p>کوکی‌های مرورگر در دسترس نیستند یا نشست منقضی شده است.</p>
+<p>لطفاً صفحهٔ پیش‌نمایش را در <strong>تب جدید</strong> باز کنید، یا کوکی‌ها را برای این سایت مجاز کنید و دوباره تلاش کنید.</p>
+<a href="' . e($back) . '">تلاش مجدد</a>
+</div></body></html>';
+        exit;
+    }
+
+    flash_set('warning', 'نشست شما منقضی شده یا درخواست نامعتبر است (CSRF). لطفاً فرم را دوباره ارسال کنید.');
+
+    // بازگشت به همان صفحه (مسیر جاری؛ بدون ریسک ریدایرکت خارجی)
+    $back = (string)($_SERVER['REQUEST_URI'] ?? '');
+    if ($back === '' || $back[0] !== '/') {
+        $back = url('index.php');
+    }
+    header('Location: ' . $back);
+    exit;
 }
 
 /** شماره سند بعدی مثل S-00001 */
