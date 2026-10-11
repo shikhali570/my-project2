@@ -1,0 +1,18 @@
+# پایگاه داده SQLite و نشست‌ها
+database/*.sqlite
+database/*.sqlite-journal
+database/*.sqlite-wal
+database/*.sqlite-shm
+database/sessions/
+
+# تنظیمات محلی (حاوی رمز دیتابیس)
+config.local.php
+
+# فایل قفل نصب
+install.lock
+
+# وابستگی‌ها و فایل‌های سیستمی
+vendor/
+node_modules/
+.DS_Store
+Thumbs.db
