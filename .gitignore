@@ -16,3 +16,6 @@ vendor/
 node_modules/
 .DS_Store
 Thumbs.db
+
+# فایل‌های زیپ خروجی
+*.zip
